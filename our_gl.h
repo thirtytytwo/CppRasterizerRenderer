@@ -17,7 +17,7 @@ struct IShader{
     virtual bool fragment(Vec3f Barycentric) = 0;
 
     Vec3f uv[3];
-    Vec3f lambart;
+    Vec3f normal[3];
     TGAColor albedo;
 };
 

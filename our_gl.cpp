@@ -74,7 +74,7 @@ void get_projection_matrix(float eye_fov, float aspect_ratio, float znear, float
     m_o_scale[3][0] = 0; m_o_scale[3][1] = 0; m_o_scale[3][2] = 0;    m_o_scale[3][3] = 1;
 
     Matrix projection = Matrix::identity();
-    projection = m_p;
+    projection = (m_o_scale * m_o_tran) * m_p;
     p = projection;
 }
 

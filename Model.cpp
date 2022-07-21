@@ -104,7 +104,7 @@ Vec3f Model::Texcoord(int i){
 
 Vec3f Model::Normal(int i, int j){
     int idx = faces_[i][j][2];
-    return norm_[idx].normalize();
+    return norm_[idx];
 }
 
 TGAColor Model::Diffuse(Vec2f uv){

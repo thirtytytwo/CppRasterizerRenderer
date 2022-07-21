@@ -20,6 +20,12 @@ Model::Model(const char *filename): verts_(), faces_(){
             for(int i = 0; i < 3; ++i) iss >>v[i];
             verts_.push_back(v);
         }
+        else if(!line.compare(0, 3, "vn ")){
+            iss >> trash >> trash;
+            Vec3f n;
+            for(int i = 0; i < 3; ++i) iss >>n[i];
+            norm_.push_back(n);
+        }
         else if(!line.compare(0, 3, "vt ")){
             iss >> trash >> trash;
             Vec3f v;
@@ -27,42 +33,64 @@ Model::Model(const char *filename): verts_(), faces_(){
             uv_.push_back(v);
         }
         else if(!line.compare(0,2,"f ")){
-            std::vector<int> f;
-            std::vector<int> coord;
-            int itrash, idx, texIndex;
+            std::vector<Vec3i> f;
+            Vec3i temp;//用temp中的xyz分量存储顶点，uv和法线
+            int itrash;
             iss >> trash;
-            while(iss >> idx >> trash >> texIndex >> trash >> itrash){
+            while(iss >> temp[0] >> trash >> temp[1] >> trash >> temp[2]){
                 //对于面存储的方式是 顶点坐标索引/纹理索引/法线索引
                 //所以后两个itrash对应的就是这个顶点纹理坐标和法线坐标的索引
-                idx--;
-                texIndex--;
-                f.push_back(idx);
-                coord.push_back(texIndex);
+                for(int i = 0; i < 3; ++i) temp[i]--;
+                f.push_back(temp);
             }
             faces_.push_back(f);
-            uv_Index.push_back(coord);
         }
     }
-    std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << "# uv#"<< uv_Index.size() << std::endl;
+    std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << "# uv#"<< uv_.size() << std::endl;
+    load_texture(filename, "_diffuse.tga", _MainTex);
+    load_texture(filename, "_nm.tga",      _NormalMap);
 };
 
 Model::~Model() {
 }
 
-int Model::AllVert() {
-    return (int)verts_.size();
+void Model::load_texture(std::string filename, const char *suffix, TGAImage &img) {
+    std::string texfile(filename);
+    size_t dot = texfile.find_last_of(".");
+    if (dot!=std::string::npos) {
+        texfile = texfile.substr(0,dot) + std::string(suffix);
+        std::cerr << "texture file " << texfile << " loading " << (img.read_tga_file(texfile.c_str()) ? "ok" : "failed") << std::endl;
+        img.flip_vertically();
+    }
 }
 
 int Model::AllFace() {
     return (int)faces_.size();
 }
 
-std::vector<int> Model::Face(int idx) {
-    return faces_[idx];
-}
+std::vector<int> Model::Sampler(int idx, int k) {
+    std::vector<int> info;
+    switch (k)
+    {
+    case 0:
+        for(int i = 0; i < (int)faces_[idx].size(); ++i) info.push_back(faces_[idx][i][0]);
+        return info;
+        break;
+    
+    case 1:
+        for(int i = 0; i < (int)faces_[idx].size(); ++i) info.push_back(faces_[idx][i][1]);
+        return info;
+        break;
 
-std::vector<int> Model::Sampler(int idx) {
-    return uv_Index[idx];
+    case 2:
+        for(int i = 0; i < (int)faces_[idx].size(); ++i) info.push_back(faces_[idx][i][2]);
+        return info;
+        break;
+
+    default:
+        return info;
+        break;
+    }
 }
 
 Vec3f Model::Vert(int i) {
@@ -70,5 +98,15 @@ Vec3f Model::Vert(int i) {
 }
 
 Vec3f Model::Texcoord(int i){
+
     return uv_[i];
+}
+
+Vec3f Model::Normal(int i, int j){
+    int idx = faces_[i][j][2];
+    return norm_[idx].normalize();
+}
+
+TGAColor Model::Diffuse(Vec2f uv){
+    return _MainTex.get(uv[0] * _MainTex.get_width(), uv[1] * _MainTex.get_height());
 }

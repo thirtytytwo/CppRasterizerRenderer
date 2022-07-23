@@ -24,6 +24,7 @@ public:
     Vec3f Vert(int index);//获取该索引列的顶点坐标
     Vec3f Texcoord(int index);//获取索引列的纹理坐标
     Vec3f Normal(int i, int j);
+    Vec3f Normal(Vec2f uv);
     TGAColor Diffuse(Vec2f uv);
     std::vector<int> Sampler(int index, int k);//获取该索引列对应的数据,k为数据类型
 };

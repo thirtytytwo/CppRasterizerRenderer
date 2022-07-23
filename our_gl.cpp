@@ -10,6 +10,19 @@ Matrix mvp;
 
 IShader::~IShader(){};
 
+Vec3f m2v(Matrix m){
+    return Vec3f(m[0][0]/m[3][0], m[1][0]/m[3][0], m[2][0]/m[3][0]);
+}
+
+mat<4, 1, float> v2m(Vec3f v){
+    mat<4, 1, float> m;
+    m[0][0] = v.x;
+    m[1][0] = v.y;
+    m[2][0] = v.z;
+    m[3][0] = 1.f;
+    return m;
+}
+
 void get_model_matrix(Vec3f rotation){
     float angleZ = (rotation.z / 180.f) *PI;
     float angleY = (rotation.y / 180.f) *PI;
@@ -42,44 +55,25 @@ void get_model_matrix(Vec3f rotation){
     model_M_x[3][0] = 0; model_M_x[3][1] = 0;    model_M_x[3][2] = 0;       model_M_x[3][3] = 1;
     m = model_M_z * model_M_y * model_M_x;
 }
-void get_view_matrix(Vec3f eye_pos){
-    //还原摄像机平移
+void get_view_matrix(int x, int y, int width, int height){
     Matrix view_M = Matrix::identity();
-    view_M[0][0] = 1; view_M[0][1] = 0; view_M[0][2] = 0;    view_M[0][3] = -eye_pos[0];
-    view_M[1][0] = 0; view_M[1][1] = 1; view_M[1][2] = 0;    view_M[1][3] = -eye_pos[1];
-    view_M[2][0] = 0; view_M[2][1] = 0; view_M[2][2] = 1;    view_M[2][3] = -eye_pos[2];
-    view_M[3][0] = 0; view_M[3][1] = 0; view_M[3][2] = 0;    view_M[3][3] = 1;
+    view_M[0][3] = x + width * .5f;
+    view_M[1][3] = y + height * .5f;
+    view_M[2][3] = 255.f * .5;
+
+    view_M[0][0] = width * .5f;
+    view_M[1][1] = height * .5f;
+    view_M[2][2] = 255 * .5f;
     v = view_M;
 }
-void get_projection_matrix(float eye_fov, float aspect_ratio, float znear, float zfar){
-    float t = tan((eye_fov/360) * PI) * abs(znear);
-    float r = t/aspect_ratio;
-
-    Matrix m_p;
-    m_p[0][0] = znear; m_p[0][1] = 0; m_p[0][2] = 0;    m_p[0][3] = 0;
-    m_p[1][0] = 0; m_p[1][1] = znear; m_p[1][2] = 0;    m_p[1][3] = 0;
-    m_p[2][0] = 0; m_p[2][1] = 0; m_p[2][2] = znear + zfar;    m_p[2][3] = -znear * zfar;
-    m_p[3][0] = 0; m_p[3][1] = 0; m_p[3][2] = 0;    m_p[3][3] = 1;
-
-    Matrix m_o_tran;
-    m_o_tran[0][0] = 1; m_o_tran[0][1] = 0; m_o_tran[0][2] = 0;    m_o_tran[0][3] = 0;
-    m_o_tran[1][0] = 0; m_o_tran[1][1] = 1; m_o_tran[1][2] = 0;    m_o_tran[1][3] = 0;
-    m_o_tran[2][0] = 0; m_o_tran[2][1] = 0; m_o_tran[2][2] = 1;    m_o_tran[2][3] = -(znear + zfar)/2;
-    m_o_tran[3][0] = 0; m_o_tran[3][1] = 0; m_o_tran[3][2] = 0;    m_o_tran[3][3] = 1;
-
-    Matrix m_o_scale;
-    m_o_scale[0][0] = 1/r; m_o_scale[0][1] = 0; m_o_scale[0][2] = 0;    m_o_scale[0][3] = 0;
-    m_o_scale[1][0] = 0; m_o_scale[1][1] = 1/t; m_o_scale[1][2] = 0;    m_o_scale[1][3] = 0;
-    m_o_scale[2][0] = 0; m_o_scale[2][1] = 0; m_o_scale[2][2] = 2/(znear - zfar);    m_o_scale[2][3] = 0;
-    m_o_scale[3][0] = 0; m_o_scale[3][1] = 0; m_o_scale[3][2] = 0;    m_o_scale[3][3] = 1;
-
+void get_projection_matrix(Vec3f camera){
     Matrix projection = Matrix::identity();
-    projection = (m_o_scale * m_o_tran) * m_p;
+    projection[3][2] = -1.f/camera.z;
     p = projection;
 }
 
 void get_mvp_matrix(){
-    mvp = p * v * m;
+    mvp = v * p;
 }
 
 //////////////////triangle//////////////////
@@ -91,13 +85,17 @@ Vec2f Sampler2D(Vec3f *uv, Vec3f bary_coord){
 Vec3f world2screen(Vec3f v, int width, int height) {
     return Vec3f(int((v.x+1.)*width * 0.5), int((v.y+1.)*height * 0.5), v.z * (100 - 0.1) / 2.0 + (100 + 0.1) / 2.0);
 }
-Vec3f Barycentric(Vec3f *pts, Vec3f p){
-    Vec3f sx = Vec3f(pts[1][0] - pts[0][0], pts[2][0] - pts[0][0], pts[0][0] - p[0]);
-    Vec3f sy = Vec3f(pts[1][1] - pts[0][1], pts[2][1] - pts[0][1], pts[0][1] - p[1]);
-
-    Vec3f result = cross(sx, sy);
-    if(std::abs(result.z) <= 0.) return Vec3f(-1,-1,-1);
-    return Vec3f(1.f - (result.x + result.y) / result.z, result.y / result.z, result.x / result.z);
+Vec3f Barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
+    Vec3f s[2];
+    for (int i=2; i--; ) {
+        s[i][0] = C[i]-A[i];
+        s[i][1] = B[i]-A[i];
+        s[i][2] = A[i]-P[i];
+    }
+    Vec3f u = cross(s[0], s[1]);
+    if (std::abs(u[2])>1e-2) // dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+        return Vec3f(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
+    return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
 void Triangle(Vec3f *pts, IShader &shader, float *zbuffer, TGAImage &img){
@@ -115,13 +113,12 @@ void Triangle(Vec3f *pts, IShader &shader, float *zbuffer, TGAImage &img){
     Vec3f p;
     for(p.x = min_x; p.x <= max_x; ++p.x){
         for(p.y = min_y; p.y <= max_y; ++p.y){
-            Vec3f result = Barycentric(pts, p);
-            shader.fragment(result);
+            Vec3f result = Barycentric(pts[0],pts[1], pts[2], p);
             if(result.x < 0 || result.y < 0 || result.z < 0) continue;
+            shader.fragment(result);
             p.z = 0;
             for(int i = 0; i < 3; ++i) p.z += pts[i][2] * result[i];
             //写入深度缓存
-            if(p.x + p.y * img.get_width() < 0) continue;
             if(zbuffer[int(p.x + p.y * img.get_width())] < p.z){
                 zbuffer[int(p.x + p.y * img.get_width())] = p.z;
                 img.set(p.x, p.y, shader.albedo);

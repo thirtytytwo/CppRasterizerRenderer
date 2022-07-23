@@ -48,7 +48,7 @@ Model::Model(const char *filename): verts_(), faces_(){
     }
     std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << "# uv#"<< uv_.size() << std::endl;
     load_texture(filename, "_diffuse.tga", _MainTex);
-    load_texture(filename, "_nm.tga",      _NormalMap);
+    load_texture(filename, "_nm_tangent.tga",      _NormalMap);
 };
 
 Model::~Model() {
@@ -105,6 +105,15 @@ Vec3f Model::Texcoord(int i){
 Vec3f Model::Normal(int i, int j){
     int idx = faces_[i][j][2];
     return norm_[idx];
+}
+Vec3f Model::Normal(Vec2f uvf) {
+    Vec2i uv(uvf[0]*_NormalMap.get_width(), uvf[1]*_NormalMap.get_height());
+    TGAColor c = _NormalMap.get(uv[0], uv[1]);
+    Vec3f res;
+    res[0] = (float)c.b/255.f*2.f - 1.f;
+    res[1] = (float)c.g/255.f*2.f - 1.f;
+    res[2] = (float)c.r/255.f*2.f - 1.f;
+    return res;
 }
 
 TGAColor Model::Diffuse(Vec2f uv){

@@ -1,5 +1,3 @@
-
-
 #ifndef __GEOMETRY_H__
 #define __GEOMETRY_H__
 #include <cmath>
@@ -228,7 +226,6 @@ template <size_t DimRows,size_t DimCols,class T> std::ostream& operator<<(std::o
     for (size_t i=0; i<DimRows; i++) out << m[i] << std::endl;
     return out;
 }
-
 /////////////////////////////////////////////////////////////////////////////////
 
 typedef vec<2,  float> Vec2f;
